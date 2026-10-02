@@ -17,6 +17,22 @@ function missing(args) {
   return { found: false, client: args.client, sessionId: args.sessionId, exchanges: [] };
 }
 
+test('keeps native and WSL read failures instead of reporting a missing transcript', () => {
+  for (const failingHome of ['/native', '/wsl']) {
+    const attempts = [];
+    const detail = resolveSessionDetailForPlatform({ client: 'codex', sessionId: 'large' }, {
+      platform: 'win32', homedir: () => '/native',
+      wslUsageHomes: () => ['/wsl', '/other'],
+      readSessionDetail: args => {
+        attempts.push(args.home);
+        return args.home === failingHome ? { found: false, error: 'line-too-large' } : missing(args);
+      }
+    });
+    assert.equal(detail.error, 'line-too-large');
+    assert.deepEqual(attempts, failingHome === '/native' ? ['/native'] : ['/native', '/wsl']);
+  }
+});
+
 test('reads a Claude transcript from a discovered WSL home', (t) => {
   const nativeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'tm-native-detail-'));
   const wslHome = fs.mkdtempSync(path.join(os.tmpdir(), 'tm-wsl-detail-'));
