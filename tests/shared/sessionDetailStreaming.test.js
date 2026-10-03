@@ -82,3 +82,25 @@ test('reports read failures separately from missing transcripts', (t) => {
   assert.equal(detail.error, 'read-failed');
   assert.deepEqual(detail.exchanges, []);
 });
+
+for (const client of ['codex', 'claude']) {
+  test(`${client} returns the missing result when the transcript disappears before opening`, (t) => {
+    const { file, args } = transcript(t, client);
+    const expected = readSessionDetail(args);
+    fs.writeFileSync(file, codexTurn);
+    const openSync = fs.openSync;
+    let removed = false;
+    t.mock.method(fs, 'openSync', (filePath, ...options) => {
+      if (filePath === file) {
+        fs.unlinkSync(file);
+        removed = true;
+      }
+      return openSync(filePath, ...options);
+    });
+
+    const detail = readSessionDetail(args);
+    assert.equal(removed, true, 'the resolver found the file before it disappeared');
+    assert.deepEqual(detail, expected);
+    assert.equal(Object.hasOwn(detail, 'error'), false);
+  });
+}

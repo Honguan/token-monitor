@@ -445,6 +445,7 @@ function readSessionDetail({ client, sessionId, period = 'total', sessionCost = 
     parsed = client === 'codex' ? parseCodexTranscriptData(lines) : null;
     events = parsed ? parsed.events : parseClaudeTranscriptLines(lines);
   } catch (error) {
+    if (error.code === 'ENOENT') return { found: false, client, sessionId, period, exchanges: [], totals: totalsOf([], sessionCost) };
     return {
       found: false, client, sessionId, period, exchanges: [], totals: totalsOf([], sessionCost),
       error: error.code === 'SESSION_DETAIL_LINE_TOO_LARGE' ? 'line-too-large' : 'read-failed'
